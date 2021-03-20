@@ -1,8 +1,11 @@
 import numpy as np
+import math
+from scipy.special import comb
 import matplotlib.pyplot as plt
 import matplotlib.animation as manimation
 from tqdm import tqdm
 import click
+import time
 
 
 class IsingLattice:
@@ -108,7 +111,14 @@ class IsingLattice:
     @property
     def heat_capacity(self):
         U, U_2 = self.internal_energy
-        return U_2 - U**2
+        return (U_2 - U**2)/(self.T)**2
+    
+    @property
+    def entropy(self):
+        N = self.size**2
+        temp = np.sum(self.system)
+        Np = int((N+temp)/2)
+        return math.log(comb(N, Np, exact=True))/N
 
     @property
     def magnetization(self):
@@ -122,12 +132,13 @@ def run(lattice, epochs, video=True):
     """
 
     FFMpegWriter = manimation.writers['ffmpeg']
-    writer = FFMpegWriter(fps=10)
+    writer = FFMpegWriter(fps=24)
 
     fig = plt.figure()
 
     with writer.saving(fig, "ising.mp4", 100):
         for epoch in tqdm(range(epochs)):
+        #for epoch in range(epochs):
             # Randomly select a site on the lattice
             N, M = np.random.randint(0, lattice.size, 2)
 
@@ -140,7 +151,7 @@ def run(lattice, epochs, video=True):
             elif np.exp(-E/lattice.T) > np.random.rand():
                 lattice.system[N, M] *= -1
 
-            if video and epoch % (epochs//75) == 0:
+            if video and epoch % (epochs//100) == 0:
                 img = plt.imshow(
                     lattice.system, interpolation='nearest', cmap='jet'
                 )
@@ -156,6 +167,24 @@ def run(lattice, epochs, video=True):
     default=0.5,
     show_default=True,
     help='temperature of the system'
+)
+@click.option(
+    '--tinitial',
+    default=0.01,
+    show_default=True,
+    help='start temperature of the system'
+)
+@click.option(
+    '--tfinal',
+    default=4.5,
+    show_default=True,
+    help='end temperature of the system'
+)
+@click.option(
+    '--tstep',
+    default=0.01,
+    show_default=True,
+    help='temperature step of the system'
 )
 @click.option(
     '--initial-state', '-i',
@@ -182,14 +211,65 @@ def run(lattice, epochs, video=True):
     is_flag=True,
     help='Record a video of the simulation progression'
 )
-def main(temperature, initial_state, size, epochs, video):
-    lattice = IsingLattice(
-        temperature=temperature, initial_state=initial_state, size=size
-    )
+def main(temperature, tinitial, tfinal, tstep, initial_state, size, epochs, video):
+    lattice = IsingLattice(temperature=temperature, initial_state=initial_state, size=size)
     run(lattice, epochs, video)
 
-    print(f"{'Net Magnetization [%]:':.<25}{lattice.magnetization:.2f}")
-    print(f"{'Heat Capacity [AU]:':.<25}{lattice.heat_capacity:.2f}")
+#     Temp = np.concatenate((np.arange(0.010, tinitial, 0.1), np.arange(tinitial, tfinal, tstep), np.arange(tfinal, 4.5, 0.1), np.arange(4.5, 8, 0.2)), axis=None)
+# #     Temp = np.arange(6, 15, 0.2)
+#     E = []
+#     S = []
+#     C = []
+#     M = []
+#     startTime = time.time()
+#     for T in Temp:
+#         print("T=%.4f" %T)
+#         lattice = IsingLattice(temperature=T, initial_state=initial_state, size=size)
+#         run(lattice, epochs, video)
+#         E += [lattice.internal_energy[0]]
+#         S += [lattice.entropy]
+#         C += [lattice.heat_capacity]
+#         M += [lattice.magnetization]
+#         print(f"{'Mean Energy [J]:':,<25}{lattice.internal_energy[0]:.2f}")
+#         print(f"{'Entropy [J/K]:':,<25}{lattice.entropy:.2f}")
+#     endTime = time.time()
+#     E = np.array(E)
+#     S = np.array(S)
+#     C = np.array(C)
+#     M = np.array(M)
+#     dataFileName = "data-ESCM-T-size"+str(int(size))+"-iter"+str(int(epochs))+".csv"
+#     np.savetxt(fileFileName, np.array([Temp, E, S, C, M]), delimiter=',')
+    
+#     fig, ax1 = plt.subplots(1, 1)
+#     Eplot = ax1.plot(Temp, E, 'r-', label="E-T", alpha=0.7)
+#     plt.minorticks_on()
+
+#     ax2 = ax1.twinx()
+#     Splot = ax2.plot(Temp, S, 'b-', label="S-T", alpha=0.7)
+
+#     lns = Eplot+Splot
+#     labs = [l.get_label() for l in lns]
+#     ax1.legend(lns, labs, fontsize=15)
+
+#     ax1.grid()
+#     ax1.set_title("Enerygy & Entropy - Temperature", fontsize=20)
+#     ax1.set_xlabel("Temperature", fontsize=15)
+#     ax1.set_ylabel("Temperature", fontsize=15)
+#     ax2.set_ylabel("Entropy", fontsize=15)
+
+#     plt.savefig("ES-T.png", bbox_inches='tight', pad_inches=0.5)
+#     plt.close()
+    
+#     print("Duration: %.2f" %(endTime-startTime))
+    
+#     plt.plot(Temp, E, '.-')
+#     plt.savefig("E-T.png")
+#     plt.close()
+
+    print(f"{'Mean Energy [J]:':,<25}{lattice.internal_energy[0]:.2f}")
+    print(f"{'Entropy [J/K]:':,<25}{lattice.entropy:.2f}")
+    print(f"{'Net Magnetization [%]:':,<25}{lattice.magnetization:.2f}")
+    print(f"{'Heat Capacity [AU]:':,<25}{lattice.heat_capacity:.2f}")
 
 
 if __name__ == "__main__":

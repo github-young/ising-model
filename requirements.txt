@@ -1,7 +1,6 @@
 numpy
+math
 matplotlib
 tqdm
 click
-pytest
-pytest-cov
-flake8
+SciencePlots
