@@ -1,5 +1,4 @@
 *.mp4
-*.pdf
 
 venv/
 .ipynb_checkpoints/
